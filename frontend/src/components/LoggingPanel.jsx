@@ -1,11 +1,30 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import styles from './LoggingPanel.module.css'
+import Fuse from 'fuse.js/dist/fuse.esm.js'
 
 export default function LoggingPanel({ foods, onAdd }) {
   const [foodId, setFoodId] = useState('')
   const [name, setName] = useState('')
   const [grams, setGrams] = useState(100)
   const [error, setError] = useState(null)
+
+  const fuseRef = useRef(null)
+
+  useEffect(() => {
+    if (foods && foods.length) {
+      fuseRef.current = new Fuse(foods, { keys: ['name'], includeScore: true, threshold: 0.4 })
+    } else {
+      fuseRef.current = null
+    }
+  }, [foods])
+
+  const findBestMatch = (text) => {
+    const fuse = fuseRef.current
+    if (!fuse || !text) return null
+    const results = fuse.search(text, { limit: 3 })
+    if (!results || results.length === 0) return null
+    return results[0]
+  }
 
   const submit = async (e) => {
     e.preventDefault()
@@ -24,26 +43,73 @@ export default function LoggingPanel({ foods, onAdd }) {
       payload.foodId = foodId
     } else {
       const trimmed = name.trim()
-      // try to find a matching food from the loaded catalog
-      const match = foods.find(f => f.name.toLowerCase() === trimmed.toLowerCase())
-      if (match) {
-        payload.foodId = match._id
+      // exact catalog match first
+      const exact = foods.find(f => f.name.toLowerCase() === trimmed.toLowerCase())
+      if (exact) {
+        payload.foodId = exact._id
       } else {
-        // prompt user for per-100g macros (simple fallback UX)
-        const c = window.prompt('Enter calories per 100g for "' + trimmed + '" (leave blank for 0)', '')
-        if (c === null) return // user cancelled
-        const p = window.prompt('Enter protein (g) per 100g', '')
-        if (p === null) return
-        const cb = window.prompt('Enter carbs (g) per 100g', '')
-        if (cb === null) return
-        const f = window.prompt('Enter fats (g) per 100g', '')
-        if (f === null) return
-        const calories = Number(c) || 0
-        const protein = Number(p) || 0
-        const carbs = Number(cb) || 0
-        const fats = Number(f) || 0
-        payload.name = trimmed || 'Custom'
-        payload.per100 = { calories, protein, carbs, fats }
+        // try fuzzy match
+        const best = findBestMatch(trimmed)
+        if (best) {
+          const score = best.score ?? 1
+          const matched = best.item
+          // score: 0 best, 1 worst
+          if (score <= 0.4) {
+            payload.foodId = matched._id
+          } else if (score <= 0.6) {
+            const use = window.confirm(`Did you mean "${matched.name}"? OK to use it, Cancel to enter macros manually.`)
+            if (use) payload.foodId = matched._id
+            else {
+              // prompt for per100 macros (fallback)
+              const c = window.prompt('Enter calories per 100g for "' + trimmed + '" (leave blank for 0)', '')
+              if (c === null) return
+              const p = window.prompt('Enter protein (g) per 100g', '')
+              if (p === null) return
+              const cb = window.prompt('Enter carbs (g) per 100g', '')
+              if (cb === null) return
+              const f = window.prompt('Enter fats (g) per 100g', '')
+              if (f === null) return
+              const calories = Number(c) || 0
+              const protein = Number(p) || 0
+              const carbs = Number(cb) || 0
+              const fats = Number(f) || 0
+              payload.name = trimmed || 'Custom'
+              payload.per100 = { calories, protein, carbs, fats }
+            }
+          } else {
+            // poor match -> ask for macros
+            const c = window.prompt('Enter calories per 100g for "' + trimmed + '" (leave blank for 0)', '')
+            if (c === null) return
+            const p = window.prompt('Enter protein (g) per 100g', '')
+            if (p === null) return
+            const cb = window.prompt('Enter carbs (g) per 100g', '')
+            if (cb === null) return
+            const f = window.prompt('Enter fats (g) per 100g', '')
+            if (f === null) return
+            const calories = Number(c) || 0
+            const protein = Number(p) || 0
+            const carbs = Number(cb) || 0
+            const fats = Number(f) || 0
+            payload.name = trimmed || 'Custom'
+            payload.per100 = { calories, protein, carbs, fats }
+          }
+        } else {
+          // no match -> ask for macros
+          const c = window.prompt('Enter calories per 100g for "' + trimmed + '" (leave blank for 0)', '')
+          if (c === null) return
+          const p = window.prompt('Enter protein (g) per 100g', '')
+          if (p === null) return
+          const cb = window.prompt('Enter carbs (g) per 100g', '')
+          if (cb === null) return
+          const f = window.prompt('Enter fats (g) per 100g', '')
+          if (f === null) return
+          const calories = Number(c) || 0
+          const protein = Number(p) || 0
+          const carbs = Number(cb) || 0
+          const fats = Number(f) || 0
+          payload.name = trimmed || 'Custom'
+          payload.per100 = { calories, protein, carbs, fats }
+        }
       }
     }
 
