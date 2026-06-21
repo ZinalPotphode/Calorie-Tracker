@@ -1,0 +1,5 @@
+.wrap { border:1px solid #eee; padding:12px; border-radius:8px; margin:12px 0 }
+.row { display:flex; gap:8px; margin-bottom:8px }
+.row input, .row select { padding:8px }
+
+.error { color: crimson; margin-top:8px }

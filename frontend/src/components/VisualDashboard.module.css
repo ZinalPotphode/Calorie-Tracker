@@ -1,0 +1,7 @@
+.wrap { border:1px solid #eee; padding:12px; border-radius:8px; margin:12px 0 }
+.progressWrap { margin-bottom:12px }
+.bar { height:18px; border-radius:9px; overflow:hidden }
+.fill { height:100%; }
+.meta { margin-top:6px; font-size:14px }
+.macros { display:flex; gap:12px }
+.macro { background:#fafafa; padding:8px; border-radius:6px; flex:1 }
